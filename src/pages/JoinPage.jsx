@@ -1,95 +1,128 @@
-// src/JoinPage.js
+// src/JoinPage.jsx
 import React, { useState } from 'react';
-import { getFirestore, collection, getDocs, query, where, updateDoc, doc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
-import { db } from '../firebaseConfig';
+import { db } from '../firebaseConfig'; // Correct import of Firebase Firestore
 
 const JoinPage = () => {
-  const [password, setPassword] = useState('');
+  const [roomId, setRoomId] = useState('');
   const [nickname, setNickname] = useState('');
-  const [role, setRole] = useState('player'); // Either 'player' or 'observer'
-  const [color, setColor] = useState('#FF5733'); // Default color
+  const [password, setPassword] = useState('');
+  const [isPlayer, setIsPlayer] = useState(true);
+  const [selectedColor, setSelectedColor] = useState('#000000'); // Default color
+  const [errorMessage, setErrorMessage] = useState('');
+
   const db = getFirestore();
   const navigate = useNavigate();
 
-  const joinRoom = async () => {
+  const handleJoinRoom = async () => {
+    if (!roomId || !nickname || !password) {
+      setErrorMessage('Room ID, Nickname, and Password are required.');
+      return;
+    }
+
     try {
-      // Query Firestore to find room with matching password
-      const q = query(collection(db, 'rooms'), where('password', '==', password));
-      const querySnapshot = await getDocs(q);
+      const roomDocRef = doc(db, 'rooms', roomId);
+      const roomDoc = await getDoc(roomDocRef);
 
-      if (!querySnapshot.empty) {
-        const roomId = querySnapshot.docs[0].id; // Assume the first match
-        const roomDocRef = doc(db, 'rooms', roomId);
-        const roomData = querySnapshot.docs[0].data();
-
-        // Add player/observer with color to Firestore
-        if (role === 'player') {
-          const updatedPlayers = [...roomData.players, { nickname, color }];
-          await updateDoc(roomDocRef, { players: updatedPlayers });
-        } else {
-          const updatedObservers = [...roomData.observers, nickname];
-          await updateDoc(roomDocRef, { observers: updatedObservers });
-        }
-
-        // Navigate to the room
-        localStorage.setItem('nickname', nickname); // Save nickname locally
-        navigate(`/room/${roomId}`);
-      } else {
-        alert('Room not found or incorrect password!');
+      if (!roomDoc.exists()) {
+        setErrorMessage('Room not found.');
+        return;
       }
+
+      const roomData = roomDoc.data();
+
+      // Validate password
+      if (roomData.password !== password) {
+        setErrorMessage('Incorrect password.');
+        return;
+      }
+
+      // Check if user is joining as a player or observer
+      if (isPlayer) {
+        // Add the player to the room's players list
+        await updateDoc(roomDocRef, {
+          players: arrayUnion({
+            nickname: nickname,
+            color: selectedColor,
+          }),
+        });
+      } else {
+        // Add the observer to the room's observers list
+        await updateDoc(roomDocRef, {
+          observers: arrayUnion({
+            nickname: nickname,
+          }),
+        });
+      }
+
+      // Navigate to the board page after successfully joining
+      navigate(`/room/${roomId}`);
+
     } catch (error) {
-      console.error('Error joining room: ', error);
+      console.error('Error joining room:', error);
+      setErrorMessage('Failed to join room. Please try again.');
     }
   };
 
   return (
     <div>
-      <h1>Join a Room</h1>
-      <label>Nickname:</label>
-      <input
-        type="text"
-        value={nickname}
-        onChange={(e) => setNickname(e.target.value)}
-      />
+      <h1>Join Bingo Room</h1>
 
-      <label>Password:</label>
-      <input
-        type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-
-      <label>Role:</label>
       <div>
         <input
-          type="radio"
-          value="player"
-          checked={role === 'player'}
-          onChange={() => setRole('player')}
+          type="text"
+          placeholder="Enter Room ID"
+          value={roomId}
+          onChange={(e) => setRoomId(e.target.value)}
         />
-        <label>Player</label>
         <input
-          type="radio"
-          value="observer"
-          checked={role === 'observer'}
-          onChange={() => setRole('observer')}
+          type="text"
+          placeholder="Enter Nickname"
+          value={nickname}
+          onChange={(e) => setNickname(e.target.value)}
         />
-        <label>Observer</label>
+        <input
+          type="password"
+          placeholder="Enter Room Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        
+        <div>
+          <label>
+            <input
+              type="radio"
+              checked={isPlayer}
+              onChange={() => setIsPlayer(true)}
+            />
+            Player
+          </label>
+          <label>
+            <input
+              type="radio"
+              checked={!isPlayer}
+              onChange={() => setIsPlayer(false)}
+            />
+            Spectator
+          </label>
+        </div>
+
+        {isPlayer && (
+          <div>
+            <label>Select your color:</label>
+            <input
+              type="color"
+              value={selectedColor}
+              onChange={(e) => setSelectedColor(e.target.value)}
+            />
+          </div>
+        )}
+
+        {errorMessage && <p style={{ color: 'red' }}>{errorMessage}</p>}
+
+        <button onClick={handleJoinRoom}>Join Room</button>
       </div>
-
-      {role === 'player' && (
-        <>
-          <label>Select Color:</label>
-          <input
-            type="color"
-            value={color}
-            onChange={(e) => setColor(e.target.value)}
-          />
-        </>
-      )}
-
-      <button onClick={joinRoom}>Join Room</button>
     </div>
   );
 };

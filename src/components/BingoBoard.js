@@ -1,81 +1,64 @@
-// src/BingoBoard.js
+// src/BoardPage.jsx
 import React, { useEffect, useState } from 'react';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
 import { useParams } from 'react-router-dom';
-import { getFirestore, doc, getDoc, updateDoc } from 'firebase/firestore';
-import { onSnapshot } from 'firebase/firestore';
 
 const BingoBoard = () => {
-  const { roomId } = useParams();
+  const { roomId } = useParams(); // Get roomId from the URL
   const [tasks, setTasks] = useState([]);
-  const [player, setPlayer] = useState(null); // Store current player's info
   const db = getFirestore();
 
+  // Fetch room tasks from Firestore
   useEffect(() => {
     const fetchRoomData = async () => {
-      const roomDocRef = doc(db, 'rooms', roomId);
-      const roomDoc = await getDoc(roomDocRef);
+      try {
+        const roomDocRef = doc(db, 'rooms', roomId);
+        const roomDoc = await getDoc(roomDocRef);
 
-      if (roomDoc.exists()) {
-        const roomData = roomDoc.data();
-        setTasks(roomData.tasks); // Load tasks
-        // Assuming player's nickname is saved locally or passed as props
-        const nickname = localStorage.getItem('nickname');
-        const playerInfo = roomData.players.find((p) => p.nickname === nickname);
-        setPlayer(playerInfo);
-      } else {
-        console.error('No such room!');
+        if (roomDoc.exists()) {
+          const roomData = roomDoc.data();
+          setTasks(roomData.tasks);
+        } else {
+          console.error('Room not found');
+        }
+      } catch (error) {
+        console.error('Error fetching room data: ', error);
       }
     };
 
     fetchRoomData();
-
-    // Set up real-time updates for tasks
-    const unsub = onSnapshot(doc(db, 'rooms', roomId), (docSnapshot) => {
-      const roomData = docSnapshot.data();
-      if (roomData) {
-        setTasks(roomData.tasks); // Update tasks in real-time
-      }
-    });
-
-    return () => unsub(); // Cleanup listener on unmount
-  }, [roomId, db]);
-
-  // Mark task as completed by the current player
-  const handleTaskClick = async (taskIndex) => {
-    if (player) {
-      const updatedTasks = tasks.map((task, index) => {
-        if (index === taskIndex && !task.completedBy) { // Only update uncompleted tasks
-          return { ...task, completedBy: player.nickname, color: player.color };
-        }
-        return task;
-      });
-
-      const roomDocRef = doc(db, 'rooms', roomId);
-      await updateDoc(roomDocRef, { tasks: updatedTasks });
-    }
-  };
+  }, [db, roomId]);
 
   return (
     <div>
-      <h1>Bingo Board for Room {roomId}</h1>
-      <div className="bingo-board">
-        {tasks.length === 0 ? (
-          <p>No tasks available yet.</p>
-        ) : (
-          <div className="task-grid">
-            {tasks.map((task, index) => (
-              <div
-                key={index}
-                className="task-cell"
-                style={{ backgroundColor: task.color || 'white' }} // Set background color based on task completion
-                onClick={() => handleTaskClick(index)} // Player marks the task
-              >
-                <p>{task.description}</p>
-                {task.completedBy && <small>Completed by: {task.completedBy}</small>}
-              </div>
-            ))}
+      <h1>Room ID: {roomId}</h1>
+      <h2>Bingo Board</h2>
+
+      {/* Grid for tasks */}
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(5, 1fr)', 
+        gap: '10px', 
+        width: '1000px',  // Ensure the grid is within a fixed width for uniformity
+        margin: '0 auto', // Center the grid
+        padding: '10px'
+      }}>
+        {tasks.map((task, index) => (
+          <div 
+            key={index} 
+            style={{ 
+              border: '1px solid black', 
+              padding: '20px', 
+              textAlign: 'center',
+              backgroundColor: task.color || 'white'  // Set background color based on task color
+            }}
+          >
+            <p>{task.description}</p>
+            <p style={{ fontSize: '12px' }}>
+              Completed By: {task.completedBy || 'None'}
+            </p>
           </div>
-        )}
+        ))}
       </div>
     </div>
   );

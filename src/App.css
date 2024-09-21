@@ -37,16 +37,10 @@
   }
 }
 
-/* src/App.css or BingoBoard.css */
+/* src/App.css */
 .bingo-board {
-  display: flex;
-  flex-wrap: wrap;
-  width: 300px; /* Adjust this for your design */
-}
-
-.task-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr); /* 5 columns for 5x5 grid */
+  grid-template-columns: repeat(5, 1fr); /* 5x5 grid */
   gap: 10px;
 }
 
@@ -55,4 +49,5 @@
   padding: 20px;
   text-align: center;
   cursor: pointer;
+  min-height: 100px;
 }
