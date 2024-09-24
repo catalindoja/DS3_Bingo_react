@@ -1,0 +1,51 @@
+/* Board.css */
+
+.board {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr); /* 5 columns */
+  grid-template-rows: repeat(5, 1fr); /* 5 rows */
+  gap: 10px; /* Gap between squares */
+  width: 800px;
+  height: 800px;
+  margin: 20px auto;
+}
+
+.task-square {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: white;
+  border: 2px solid black;
+  border-radius: 5px;
+  text-align: center;
+  cursor: pointer;
+  padding: 10px;
+  transition: background-color 0.3s ease;
+  position: relative;
+}
+
+.task-square:hover {
+  background-color: #f0f0f0;
+}
+
+.task-description {
+  font-weight: bold;
+  margin: 0;
+  color: black;
+  font-size: 16px;
+}
+
+.completed-by {
+  font-size: 12px;
+  margin-top: 10px;
+  color: rgb(2, 0, 0);
+  font-style: italic;
+}

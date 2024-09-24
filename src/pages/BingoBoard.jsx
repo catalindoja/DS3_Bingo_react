@@ -2,11 +2,13 @@
 import React, { useEffect, useState } from 'react';
 import { doc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { useParams } from 'react-router-dom';
-import { db } from './firebaseConfig'; // Import Firestore instance
+import { db } from '../firebaseConfig'; // Import Firestore instance
+import './BingoBoard.css'; // Import CSS file to style the board
 
-const BoardPage = ({ currentPlayer }) => {
+const BoardPage = () => {
   const { roomId } = useParams();
   const [tasks, setTasks] = useState([]);
+  const currentPlayer = JSON.parse(sessionStorage.getItem('currentPlayer'));
 
   useEffect(() => {
     const roomDocRef = doc(db, 'rooms', roomId);
@@ -56,7 +58,10 @@ const BoardPage = ({ currentPlayer }) => {
             onClick={() => handleTaskClick(index)}
             style={{ backgroundColor: task.color || 'white' }}
           >
-            <p>{task.description}</p>
+            <p className="task-description">{task.description}</p>
+            {task.completedBy && (
+              <p className="completed-by">Completed by: {task.completedBy}</p>
+            )}
           </div>
         ))}
       </div>

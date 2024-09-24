@@ -3,7 +3,7 @@ import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import ModeratorPage from './pages/ModeratorPage'; // Moderator page
 import JoinPage from './pages/JoinPage'; // Player/Observer page
-import BingoBoard from './components/BingoBoard'; // Board component once they join the room
+import BingoBoard from './pages/BingoBoard'; // Board component once they join the room
 
 function App() {
   return (

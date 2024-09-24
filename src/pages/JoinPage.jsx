@@ -48,7 +48,12 @@ const JoinPage = () => {
           }),
         });
 
-        
+        // Save player nickname and color in session storage
+        sessionStorage.setItem('currentPlayer', JSON.stringify({
+          nickname: nickname,
+          color: selectedColor,
+        }));
+
       } else {
         // Add the observer to the room's observers list
         await updateDoc(roomDocRef, {

@@ -36,18 +36,3 @@
     transform: rotate(360deg);
   }
 }
-
-/* src/App.css */
-.bingo-board {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr); /* 5x5 grid */
-  gap: 10px;
-}
-
-.task-cell {
-  border: 1px solid #ccc;
-  padding: 20px;
-  text-align: center;
-  cursor: pointer;
-  min-height: 100px;
-}
