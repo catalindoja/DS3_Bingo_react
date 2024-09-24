@@ -1,62 +1,62 @@
 // src/BoardPage.jsx
 import React, { useEffect, useState } from 'react';
-import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { useParams } from 'react-router-dom';
+import { db } from './firebaseConfig'; // Import Firestore instance
 
-const BingoBoard = () => {
-  const { roomId } = useParams(); // Get roomId from the URL
+const BoardPage = ({ currentPlayer }) => {
+  const { roomId } = useParams();
   const [tasks, setTasks] = useState([]);
-  const db = getFirestore();
 
-  // Fetch room tasks from Firestore
   useEffect(() => {
-    const fetchRoomData = async () => {
-      try {
-        const roomDocRef = doc(db, 'rooms', roomId);
-        const roomDoc = await getDoc(roomDocRef);
+    const roomDocRef = doc(db, 'rooms', roomId);
 
-        if (roomDoc.exists()) {
-          const roomData = roomDoc.data();
-          setTasks(roomData.tasks);
-        } else {
-          console.error('Room not found');
-        }
-      } catch (error) {
-        console.error('Error fetching room data: ', error);
+    // Real-time listener for the tasks
+    const unsubscribe = onSnapshot(roomDocRef, (doc) => {
+      if (doc.exists()) {
+        const roomData = doc.data();
+        setTasks(roomData.tasks); // Update the board with new task states
       }
-    };
+    });
 
-    fetchRoomData();
-  }, [db, roomId]);
+    return () => unsubscribe(); // Clean up listener when component unmounts
+  }, [roomId]);
+
+  const handleTaskClick = async (index) => {
+    const roomDocRef = doc(db, 'rooms', roomId);
+    const roomDoc = await getDoc(roomDocRef);
+    const roomData = roomDoc.data();
+    const updatedTasks = [...roomData.tasks]; // Copy current tasks
+
+    const task = updatedTasks[index];
+    
+    // Toggle the task state: if already marked, reset it, otherwise mark with player's info
+    if (task.completedBy) {
+      // Unmark the task
+      updatedTasks[index] = { ...task, completedBy: null, color: null };
+    } else {
+      // Mark the task as completed by the current player
+      updatedTasks[index] = { ...task, completedBy: currentPlayer.nickname, color: currentPlayer.color };
+    }
+
+    // Update Firestore with new task state
+    await updateDoc(roomDocRef, {
+      tasks: updatedTasks,
+    });
+  };
 
   return (
-    <div>
-      <h1>Room ID: {roomId}</h1>
+    <div className="board">
       <h2>Bingo Board</h2>
-
-      {/* Grid for tasks */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(5, 1fr)', 
-        gap: '10px', 
-        width: '1000px',  // Ensure the grid is within a fixed width for uniformity
-        margin: '0 auto', // Center the grid
-        padding: '10px'
-      }}>
+      <div className="grid">
         {tasks.map((task, index) => (
-          <div 
-            key={index} 
-            style={{ 
-              border: '1px solid black', 
-              padding: '20px', 
-              textAlign: 'center',
-              backgroundColor: task.color || 'white'  // Set background color based on task color
-            }}
+          <div
+            key={index}
+            className="task-square"
+            onClick={() => handleTaskClick(index)}
+            style={{ backgroundColor: task.color || 'white' }}
           >
             <p>{task.description}</p>
-            <p style={{ fontSize: '12px' }}>
-              Completed By: {task.completedBy || 'None'}
-            </p>
           </div>
         ))}
       </div>
@@ -64,4 +64,4 @@ const BingoBoard = () => {
   );
 };
 
-export default BingoBoard;
+export default BoardPage;

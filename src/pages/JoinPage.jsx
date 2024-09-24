@@ -47,6 +47,8 @@ const JoinPage = () => {
             color: selectedColor,
           }),
         });
+
+        
       } else {
         // Add the observer to the room's observers list
         await updateDoc(roomDocRef, {
