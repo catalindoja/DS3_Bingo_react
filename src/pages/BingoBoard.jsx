@@ -49,7 +49,7 @@ const BoardPage = () => {
 
   return (
     <div className="board">
-      <h2>Bingo Board</h2>
+      <h2 className='board-title'>Bingo Board</h2>
       <div className="grid">
         {tasks.map((task, index) => (
           <div

@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { getFirestore, doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
+import './JoinPage.css'; // Import CSS file to style the join page
 import { db } from '../firebaseConfig'; // Correct import of Firebase Firestore
 
 const JoinPage = () => {
@@ -73,46 +74,52 @@ const JoinPage = () => {
   };
 
   return (
-    <div>
-      <h1>Join Bingo Room</h1>
+    <div className="container">
+      <div className="login-box">
+        <h1>Join Bingo Room</h1>
 
-      <div>
+        <label>Enter Room ID</label>
         <input
           type="text"
           placeholder="Enter Room ID"
           value={roomId}
           onChange={(e) => setRoomId(e.target.value)}
         />
+
+        <label>Enter Nickname</label>
         <input
           type="text"
           placeholder="Enter Nickname"
           value={nickname}
           onChange={(e) => setNickname(e.target.value)}
         />
+
+        <label>Enter Room Password</label>
         <input
           type="password"
           placeholder="Enter Room Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        
+
+        <label>Select the type of user you want to join as:</label>
         <div>
           <label>
-            <input
+            Player
+          </label>
+          <input
               type="radio"
               checked={isPlayer}
               onChange={() => setIsPlayer(true)}
-            />
-            Player
-          </label>
+          />
           <label>
-            <input
+            Spectator
+          </label>
+          <input
               type="radio"
               checked={!isPlayer}
               onChange={() => setIsPlayer(false)}
             />
-            Spectator
-          </label>
         </div>
 
         {isPlayer && (
@@ -126,7 +133,7 @@ const JoinPage = () => {
           </div>
         )}
 
-        {errorMessage && <p style={{ color: 'red' }}>{errorMessage}</p>}
+        {errorMessage && <p className="error-message">{errorMessage}</p>}
 
         <button onClick={handleJoinRoom}>Join Room</button>
       </div>
