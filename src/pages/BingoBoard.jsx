@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom';
 import { db } from '../firebaseConfig'; // Import Firestore instance
 import { getRandomTasks } from '../services/firebaseService'; // Import random tasks function
 import './BingoBoard.css'; // Import CSS file to style the board
-import throttle from 'lodash'; // Import lodash throttle to limit updates
+import throttle from 'lodash/throttle'; // Import lodash throttle to limit updates
 
 const BoardPage = () => {
   const { roomId } = useParams();
