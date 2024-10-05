@@ -1,56 +1,95 @@
 import React, { useEffect, useState } from 'react';
-import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { useParams } from 'react-router-dom';
 import { db } from '../firebaseConfig'; // Import Firestore instance
-import { throttle } from 'lodash'; // Use lodash throttle to limit UI updates
+import { getRandomTasks } from '../services/firebaseService'; // Import random tasks function
 import './BingoBoard.css'; // Import CSS file to style the board
+import throttle from 'lodash'; // Import lodash throttle to limit updates
 
 const BoardPage = () => {
   const { roomId } = useParams();
   const [tasks, setTasks] = useState([]);
+  const [isModerator, setIsModerator] = useState(false); // Track if current user is moderator
+  const [isObserver, setIsObserver] = useState(false); // Track if current user is observer
   const currentPlayer = JSON.parse(sessionStorage.getItem('currentPlayer'));
+  
+  // Get moderator ID from session if available
+  const sessionModerator = JSON.parse(sessionStorage.getItem('moderatorId')) || null;
 
   useEffect(() => {
-    const roomDocRef = doc(db, 'rooms', roomId);
+    const fetchInitialData = async () => {
+      const roomDocRef = doc(db, 'rooms', roomId);
+      
+      // Fetch initial data without using a real-time listener
+      const roomDoc = await getDoc(roomDocRef);
+      if (roomDoc.exists()) {
+        const roomData = roomDoc.data();
+        setTasks(roomData.tasks); // Set initial tasks on the board
 
-    // Throttle UI updates (e.g., only update every 2 seconds)
-    const throttledSetTasks = throttle((newTasks) => {
-      setTasks(newTasks);
-    }, 2000); // Adjust throttle time as necessary
+        // Check if the current session user is the moderator
+        if (sessionModerator && roomData.moderatorId === sessionModerator.moderatorId) {
+          setIsModerator(true);
+        }
 
-    // Real-time listener for the tasks
-    const unsubscribe = onSnapshot(roomDocRef, (doc) => {
-      if (doc.exists()) {
-        const roomData = doc.data();
-        throttledSetTasks(roomData.tasks); // Throttle updates to tasks
+        // Check if the current player is an observer (not listed in the players array)
+        if (currentPlayer && !roomData.players.some(player => player.nickname === currentPlayer.nickname)) {
+          setIsObserver(true);
+        }
       }
-    });
+      
+      // Enable real-time listener only after the initial data load
+      const unsubscribe = onSnapshot(roomDocRef, (doc) => {
+        if (doc.exists()) {
+          const roomData = doc.data();
+          setTasks(roomData.tasks); // Update the board with new task states
+        }
+      });
 
-    return () => unsubscribe(); // Clean up listener when component unmounts
-  }, [roomId]);
+      return () => unsubscribe(); // Clean up listener on component unmount
+    };
 
-  // Function to handle clicking on a task
-  const handleTaskClick = async (index) => {
-    // Use the existing tasks state to avoid redundant reads
-    const updatedTasks = [...tasks];
+    fetchInitialData();
+  }, [roomId, sessionModerator, currentPlayer]);
 
-    const task = updatedTasks[index];
-
-    // Toggle the task state
-    if (task.completedBy) {
-      updatedTasks[index] = { ...task, completedBy: null, color: null }; // Unmark task
-    } else {
-      updatedTasks[index] = { ...task, completedBy: currentPlayer.nickname, color: currentPlayer.color }; // Mark task
-    }
-
-    // Update Firestore with the new task state
+  // Throttled function to update Firestore for task updates (limits updates to once every second)
+  const throttledUpdate = throttle(async (updatedTasks) => {
     const roomDocRef = doc(db, 'rooms', roomId);
     await updateDoc(roomDocRef, {
       tasks: updatedTasks,
     });
+  }, 1000);
 
-    // Optimistically update the local state to reflect changes immediately
-    setTasks(updatedTasks);
+  const handleTaskClick = async (index) => {
+    // Prevent moderators and observers from clicking the tasks
+    if (isModerator || isObserver) {
+      return;
+    }
+
+    const updatedTasks = [...tasks]; // Copy current tasks
+
+    const task = updatedTasks[index];
+    
+    // Toggle the task state: if already marked, reset it; otherwise, mark with player's info
+    if (task.completedBy) {
+      // Unmark the task
+      updatedTasks[index] = { ...task, completedBy: null, color: null };
+    } else {
+      // Mark the task as completed by the current player
+      updatedTasks[index] = { ...task, completedBy: currentPlayer.nickname, color: currentPlayer.color };
+    }
+
+    setTasks(updatedTasks); // Update tasks locally for UI
+    throttledUpdate(updatedTasks); // Batch and throttle Firestore updates
+  };
+
+  // Function to regenerate random tasks (only for moderators)
+  const regenerateTasks = async () => {
+    const newTasks = await getRandomTasks(); // Get new random tasks
+    const roomDocRef = doc(db, 'rooms', roomId);
+
+    await updateDoc(roomDocRef, {
+      tasks: newTasks,
+    });
   };
 
   return (
@@ -71,6 +110,13 @@ const BoardPage = () => {
           </div>
         ))}
       </div>
+
+      {/* Moderator controls */}
+      {isModerator && (
+        <div className="moderator-controls">
+          <button className="moderator-button" onClick={regenerateTasks}>Regenerate Tasks</button>
+        </div>
+      )}
     </div>
   );
 };
