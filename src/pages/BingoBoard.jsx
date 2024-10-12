@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { doc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { useParams } from 'react-router-dom';
 import { db } from '../firebaseConfig'; // Import Firestore instance
@@ -12,6 +12,8 @@ const BoardPage = () => {
   const [isModerator, setIsModerator] = useState(false); // Track if current user is moderator
   const [isObserver, setIsObserver] = useState(false); // Track if current user is observer
   const currentPlayer = JSON.parse(sessionStorage.getItem('currentPlayer'));
+  // useRef to track if initial data has been loaded
+  const count = useRef(0);
   
   // Get moderator ID from session if available
   const sessionModerator = JSON.parse(sessionStorage.getItem('moderatorId')) || null;
@@ -35,6 +37,8 @@ const BoardPage = () => {
         if (currentPlayer && !roomData.players.some(player => player.nickname === currentPlayer.nickname)) {
           setIsObserver(true);
         }
+
+        console.log('Initial data loaded:');
       }
       
       // Enable real-time listener only after the initial data load
@@ -44,11 +48,15 @@ const BoardPage = () => {
           setTasks(roomData.tasks); // Update the board with new task states
         }
       });
-
+      console.log('Snapshot listener enabled');
       return () => unsubscribe(); // Clean up listener on component unmount
     };
 
-    fetchInitialData();
+    // use ref to track if initial data has been loaded
+    if (count.current === 0) {
+      fetchInitialData();
+      count.current += 1;
+    }
   }, [roomId, sessionModerator, currentPlayer]);
 
   // Throttled function to update Firestore for task updates (limits updates to once every second)
@@ -77,7 +85,6 @@ const BoardPage = () => {
       // Mark the task as completed by the current player
       updatedTasks[index] = { ...task, completedBy: currentPlayer.nickname, color: currentPlayer.color };
     }
-
     setTasks(updatedTasks); // Update tasks locally for UI
     throttledUpdate(updatedTasks); // Batch and throttle Firestore updates
   };
